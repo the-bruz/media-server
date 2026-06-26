@@ -1,0 +1,170 @@
+networks:
+  movie_net:
+    driver: bridge
+
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:5.1.2
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    volumes:
+      - ./data/qbittorrent/config:/config
+      - ${DOWNLOAD_ROOT}:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - movie_net
+    healthcheck:
+          test: ["CMD-SHELL", "curl -sf http://localhost:8080/ || exit 1"]
+          interval: 30s
+          timeout: 10s
+          retries: 5
+          start_period: 40s
+
+  redis:
+    image: redis:8-alpine
+    volumes:
+      - ./data/redis:/data
+    command: redis-server --save 600 1 --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - movie_net
+
+  postgresql:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=moviepilot
+      - POSTGRES_USER=moviepilot
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moviepilot -d moviepilot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - movie_net
+
+  moviepilot:
+    image: jxxghp/moviepilot-v2:latest
+    hostname: moviepilot-v2
+    stdin_open: true
+    tty: true
+    environment:
+      - NGINX_PORT=3000
+      - PORT=3001
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=022
+      - TZ=${TZ}
+      - SUPERUSER=${MP_SUPERUSER}
+      - SUPERUSER_PASSWORD=${MP_SUPERUSER_PASSWORD}
+      - DB_TYPE=postgresql
+      - DB_POSTGRESQL_HOST=postgresql
+      - DB_POSTGRESQL_PORT=5432
+      - DB_POSTGRESQL_DATABASE=moviepilot
+      - DB_POSTGRESQL_USERNAME=moviepilot
+      - DB_POSTGRESQL_PASSWORD=${PG_PASSWORD}
+      - CACHE_BACKEND_TYPE=redis
+      - CACHE_BACKEND_URL=redis://:${REDIS_PASSWORD}@redis:6379
+    volumes:
+      - ./data/moviepilot/config:/config
+      - ./data/moviepilot/cache:/moviepilot/.cloakbrowser
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOWNLOAD_ROOT}:/downloads  
+      - ${MEDIA_ROOT}:/media
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - movie_net
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:10.10.7
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./data/jellyfin/config:/config
+      - ${MEDIA_ROOT}:/data/media:ro
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - movie_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8096/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  caddy:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+    networks:
+      - movie_net
+    healthcheck:
+          test: ["CMD-SHELL", "wget -q --spider http://localhost:2019/metrics || exit 1"]
+          interval: 30s
+          timeout: 10s
+          retries: 3

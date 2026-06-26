@@ -1,0 +1,9 @@
+rclone/rclone.conf
+.env
+Caddyfile
+data/
+caddy_data/
+caddy_config/
+postgres_data/
+downloads/
+media/

@@ -1,0 +1,31 @@
+[Unit]
+Description=Rclone Mount (Google Drive Media)
+Documentation=https://rclone.org
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+ExecStart=/usr/bin/rclone mount gdrive:Media /mnt/gdrive \
+    --allow-other \
+    --dir-cache-time 72h \
+    --poll-interval 30s \
+    --vfs-cache-mode full \
+    --vfs-cache-max-size 50G \
+    --vfs-cache-max-age 1h \
+    --vfs-write-back 5m \
+    --buffer-size 64M \
+    --vfs-read-chunk-size 16M \
+    --vfs-read-chunk-size-limit 1G \
+    --cache-dir=%h/.cache/rclone
+
+ExecStop=/usr/bin/fusermount3 -uz /mnt/gdrive
+
+Restart=always
+RestartSec=10
+
+LimitNOFILE=65536
+
+[Install]
+WantedBy=default.target

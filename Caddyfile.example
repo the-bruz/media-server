@@ -1,0 +1,11 @@
+mp.<domain>.com {
+    reverse_proxy moviepilot-v2:3000
+}
+
+qbit.<domain>.com {
+    reverse_proxy qbittorrent:8080
+}
+
+jf.<domain>.com {
+    reverse_proxy jellyfin:8096
+}

@@ -19,7 +19,7 @@ if [[ "$confirm" != [yY]* ]]; then
 fi
 
 echo "Nuking old data..."
-sudo rm -rf data downloads caddy_data caddy_config postgres_data
+sudo rm -rf data downloads
 
 echo "Creating directory structure..."
 mkdir -p \
@@ -29,6 +29,8 @@ mkdir -p \
   data/jellyfin/config \
   data/postgres \
   data/redis \
+  data/caddy/data \
+  data/caddy/config \
   downloads
 
 echo "Setting ownership and permissions..."

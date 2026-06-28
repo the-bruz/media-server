@@ -40,12 +40,5 @@ chmod -R 755 data downloads
 echo
 echo "Directory structure created successfully. You now have a clean slate!"
 
-echo "-----------------------------------------------------------------"
-
-echo "Bootstrapping rclone mount service..."
-
-chmod +x ./rclone/install.sh
-./rclone/install.sh
-
 echo "================================================================="
 echo "✅ All done! The environment is ready. You can now run 'docker compose up -d'."

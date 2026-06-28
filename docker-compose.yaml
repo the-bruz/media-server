@@ -4,7 +4,7 @@ networks:
 
 services:
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:5.1.2
+    image: lscr.io/linuxserver/qbittorrent:4.5.2
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -14,8 +14,8 @@ services:
       - ./data/qbittorrent/config:/config
       - ${DOWNLOAD_ROOT}:/downloads
     ports:
-      - 6881:6881
-      - 6881:6881/udp
+      - ${QBIT_PORT}:${QBIT_PORT}
+      - ${QBIT_PORT}:${QBIT_PORT}/udp
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
